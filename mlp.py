@@ -191,21 +191,42 @@ class MLP:
 data_batches = []
 directory = "data/cifar-10-batches-py/"
 
+train_x = None
+train_y = None
+
 for i in range(1,6):
-  data_batches += [unpickle(directory+"data_batch_"+str(i))]
-  data_batches[i-1][b'labels'] = np.reshape(data_batches[i-1][b'labels'],(len(data_batches[i-1][b'labels']),1))
+    new_batch = unpickle(directory+"data_batch_"+str(i))
+    if train_x is None:
+        train_x = new_batch[b'data']
+        train_y = np.reshape(new_batch[b'labels'], (10000,1))
+    else:
+        train_x = np.row_stack([train_x, new_batch[b'data']])
+        train_y = np.row_stack([train_y, np.reshape(new_batch[b'labels'], (10000,1))])
+    print(train_x.shape)
+
 test_batch = unpickle(directory+"test_batch")
-test_batch[b'labels']= np.reshape(test_batch[b'labels'], (10000,1))
+test_x = test_batch[b'data']
+test_y = test_batch[b'labels']
+
+new_train_y = np.zeros((len(train_y), 10))
+new_test_y = np.zeros((len(test_y), 10))
+
+#one hot encoding labels
+for i in range(len(train_y)):
+    new_train_y[i][train_y[i]] = 1
+train_y = new_train_y
+
+for i in range(len(test_y)):
+    new_test_y[i][test_y[i]] = 1
+test_y = new_test_y
+
+print(train_x.shape, train_y.shape, test_x.shape, test_y.shape)
 
 #normalizing the images for each batch
 #division by the magnitude to improve convergence speed of gradient descent 
 for j in range(0,5):
   data_batches[j][b'data']= data_batches[j][b'data']/255
 test_batch[b'data']=test_batch[b'data']/255
-
-train_data = 
-data_labels = 
-
 
 x,y = data_batches[0][b'data'], data_batches[0][b'labels']
 testX, testY = test_batch[b'data'], test_batch[b'labels']
