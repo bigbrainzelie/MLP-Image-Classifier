@@ -24,11 +24,21 @@ batch_keys = data_batches[0].keys()
 
 #normalizing the images for each batch
 #division by the magnitude to improve convergence speed of gradient descent 
-for j in range(0,5):
+for j in range(5):
   data_batches[j][b'data']= data_batches[j][b'data']/255
 test_batch[b'data']=test_batch[b'data']/255
 
-#print(data_batches[0][b'labels'])
+
+
+#one hot encoding
+for j in range(5):
+    for i in range(10000):
+        out = np.zeros(10)
+        out[data_batches[j][b'labels'][i]] = 1
+        data_batches[j][b'labels'][i] = out
+
+print(data_batches[0][b'labels'])
+exit
 
 def logistic(x): return np.ones(x.shape) / (np.exp(-x)+1)
 
@@ -60,10 +70,12 @@ def cross_entropy_loss_gradient(y, yh):
 
 def softmax(yh):
     yh_out = np.array(yh.shape)
+    print(yh.shape)
+    print(yh)
     for i in range(len(yh)):
         denominator = np.sum(np.exp(yh[i]))
         for j in range(len(yh[i])):
-            yh_out[i][j] = math.exp(yh[i][j]) / denominator
+            yh_out[i] = math.exp(yh[i]) / denominator
     return yh_out
 
 def softmax_gradient(yh):
@@ -176,7 +188,6 @@ class MLP:
         yh = x
         steps = []
         sizeOfParams= len(params)
-        print (sizeOfParams)
         for i in range(0,sizeOfParams):
             not_dropped = 1 #(np.random.randn(yh.shape) > self.dropout_p) * 1.0
             steps.append(np.dot(yh*not_dropped, params[i]))
