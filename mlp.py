@@ -137,7 +137,7 @@ class MLP:
         self.loss_gradient = loss_gradient
         self.dropout_p = dropout_p
             
-    def fit(self, x, y, optimizer, test_x, test_y):
+    def init_params(self, x, y):
         N,D = x.shape
         _,C = y.shape
         weight_shapes = [D]
@@ -148,6 +148,10 @@ class MLP:
             w = np.random.randn(weight_shapes[i], weight_shapes[i+1]) * .01
             w += np.ones((weight_shapes[i], weight_shapes[i+1]))*(self.min_init_weight-np.min(w))
             params_init.append(w)
+        return params_init
+
+    def fit(self, x, y, optimizer, test_x, test_y):
+        params_init = self.init_params(x, y)
         self.params = optimizer.run(self.gradient, x, y, params_init, self, test_x, test_y)
         return self
 
@@ -173,10 +177,10 @@ class MLP:
             if i != 0:
                 gradient = np.dot(gradient, self.activation_gradient(steps.pop(-1)))
                 dw = np.dot(gradient, steps.pop(-1))
-                gradient = np.dot(gradient, w)
+                gradient = np.dot(gradient, w.T)
             else:
                 dw = np.dot(gradient, steps.pop(-1))
-                gradient = np.dot(gradient, w)
+                gradient = np.dot(gradient, w.T)
             gradients = list([dw]).extend(gradients)
         return gradients
     
