@@ -187,49 +187,60 @@ class MLP:
             else: yh = np.dot(yh, w)
         return self.nonlinearity(yh)
   
+def load_from_file(file):
+    try:
+        with open(file, 'rb') as f:
+            data = pickle.load(f)
+    except:
+        return None
 
-data_batches = []
-directory = "data/cifar-10-batches-py/"
+def save_to_file(file, data):
+    with open(file, 'wb') as f:
+        pickle.dump(data, f)
 
-train_x = None
-train_y = None
+def getData():
+    unpickled = load_from_file("data/data_arrays.sav")
+    if unpickled != None:
+        return unpickled
+    data_batches = []
+    directory = "data/cifar-10-batches-py/"
 
-for i in range(1,6):
-    new_batch = unpickle(directory+"data_batch_"+str(i))
-    if train_x is None:
-        train_x = new_batch[b'data']
-        train_y = np.reshape(new_batch[b'labels'], (10000,1))
-    else:
-        train_x = np.row_stack([train_x, new_batch[b'data']])
-        train_y = np.row_stack([train_y, np.reshape(new_batch[b'labels'], (10000,1))])
-    print(train_x.shape)
+    train_x = None
+    train_y = None
 
-test_batch = unpickle(directory+"test_batch")
-test_x = test_batch[b'data']
-test_y = test_batch[b'labels']
+    for i in range(1,6):
+        new_batch = unpickle(directory+"data_batch_"+str(i))
+        if train_x is None:
+            train_x = new_batch[b'data']
+            train_y = np.reshape(new_batch[b'labels'], (10000,1))
+        else:
+            train_x = np.row_stack([train_x, new_batch[b'data']])
+            train_y = np.row_stack([train_y, np.reshape(new_batch[b'labels'], (10000,1))])
 
-new_train_y = np.zeros((len(train_y), 10))
-new_test_y = np.zeros((len(test_y), 10))
+    test_batch = unpickle(directory+"test_batch")
+    test_x = test_batch[b'data']
+    test_y = test_batch[b'labels']
 
-#one hot encoding labels
-for i in range(len(train_y)):
-    new_train_y[i][train_y[i]] = 1
-train_y = new_train_y
+    new_train_y = np.zeros((len(train_y), 10))
+    new_test_y = np.zeros((len(test_y), 10))
 
-for i in range(len(test_y)):
-    new_test_y[i][test_y[i]] = 1
-test_y = new_test_y
+    #one hot encoding labels
+    for i in range(len(train_y)):
+        new_train_y[i][train_y[i]] = 1
+    train_y = new_train_y
 
-print(train_x.shape, train_y.shape, test_x.shape, test_y.shape)
+    for i in range(len(test_y)):
+        new_test_y[i][test_y[i]] = 1
+    test_y = new_test_y
 
-#normalizing the images for each batch
-#division by the magnitude to improve convergence speed of gradient descent 
-for j in range(0,5):
-  data_batches[j][b'data']= data_batches[j][b'data']/255
-test_batch[b'data']=test_batch[b'data']/255
+    #normalizing the images for each batch
+    #division by the magnitude to improve convergence speed of gradient descent 
+    train_x = np.float64(train_x)
+    test_x = np.float64(test_x)
+    train_x *= 1/255
+    test_x *= 1/255
 
-x,y = data_batches[0][b'data'], data_batches[0][b'labels']
-testX, testY = test_batch[b'data'], test_batch[b'labels']
-optimizer = GradientDescent(batch_size=None)
-model = MLP(relu, relu_gradient, softmax, softmax_gradient, cross_entropy_loss_gradient)
-model.fit(x, y, optimizer, testX, testY)
+    save_to_file("data/data_arrays.sav", (train_x, train_y, test_x, test_y))
+
+    return train_x, train_y, test_x, test_y
+
