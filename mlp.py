@@ -9,37 +9,6 @@ def unpickle(file):
         dict = pickle.load(fo, encoding='bytes')
     return dict
 
-data_batches = []
-dir = "data/cifar-10-batches-py/"
-
-for i in range(1,6):
-  data_batches += [unpickle(dir+"data_batch_"+str(i))]
-  data_batches[i-1][b'labels'] = np.reshape(data_batches[i-1][b'labels'],(len(data_batches[i-1][b'labels']),1))
-test_batch = unpickle(dir+"test_batch")
-test_batch[b'labels']= np.reshape(test_batch[b'labels'], (10000,1))
-meta_info = unpickle(dir+"batches.meta")
-
-batch_keys = data_batches[0].keys()
-#print(batch_keys)
-
-#normalizing the images for each batch
-#division by the magnitude to improve convergence speed of gradient descent 
-for j in range(5):
-  data_batches[j][b'data']= data_batches[j][b'data']/255
-test_batch[b'data']=test_batch[b'data']/255
-
-
-
-#one hot encoding
-for j in range(5):
-    for i in range(10000):
-        out = np.zeros(10)
-        out[data_batches[j][b'labels'][i]] = 1
-        data_batches[j][b'labels'][i] = out
-
-print(data_batches[0][b'labels'])
-exit
-
 def logistic(x): return np.ones(x.shape) / (np.exp(-x)+1)
 
 def logistic_gradient(x): return (np.ones(x.shape)-logistic(x)) * logistic(x)
@@ -74,8 +43,7 @@ def softmax(yh):
     print(yh)
     for i in range(len(yh)):
         denominator = np.sum(np.exp(yh[i]))
-        for j in range(len(yh[i])):
-            yh_out[i] = math.exp(yh[i]) / denominator
+        yh_out[i] = np.exp(yh[i]) / denominator
     return yh_out
 
 def softmax_gradient(yh):
@@ -187,15 +155,13 @@ class MLP:
     def gradient(self, x, y, params):
         yh = x
         steps = []
-        sizeOfParams= len(params)
-        for i in range(0,sizeOfParams):
-            not_dropped = 1 #(np.random.randn(yh.shape) > self.dropout_p) * 1.0
-            steps.append(np.dot(yh*not_dropped, params[i]))
-            if i !=(sizeOfParams-1):
-                yh = self.activation(np.dot(yh*not_dropped, params[i]))
+        for i in range(len(params)):
+            not_dropped = (np.random.randn(yh.shape) > self.dropout_p) * 1.0
+            yh = np.dot(yh*not_dropped, params[i])
+            steps.append(yh)
+            if i != (len(params)-1):
+                yh = self.activation(yh)
                 steps.append(yh)
-            else:
-                yh = np.dot(yh, params[i])
         yh = self.nonlinearity(yh)
         steps.append(yh)
         gradient = self.loss_gradient(y, steps.pop(-1)) #NxC
@@ -221,6 +187,25 @@ class MLP:
             else: yh = np.dot(yh, w)
         return self.nonlinearity(yh)
   
+
+data_batches = []
+directory = "data/cifar-10-batches-py/"
+
+for i in range(1,6):
+  data_batches += [unpickle(directory+"data_batch_"+str(i))]
+  data_batches[i-1][b'labels'] = np.reshape(data_batches[i-1][b'labels'],(len(data_batches[i-1][b'labels']),1))
+test_batch = unpickle(directory+"test_batch")
+test_batch[b'labels']= np.reshape(test_batch[b'labels'], (10000,1))
+
+#normalizing the images for each batch
+#division by the magnitude to improve convergence speed of gradient descent 
+for j in range(0,5):
+  data_batches[j][b'data']= data_batches[j][b'data']/255
+test_batch[b'data']=test_batch[b'data']/255
+
+train_data = 
+data_labels = 
+
 
 x,y = data_batches[0][b'data'], data_batches[0][b'labels']
 testX, testY = test_batch[b'data'], test_batch[b'labels']
