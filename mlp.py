@@ -3,6 +3,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
+from scipy.optimize import check_grad
 
 def unpickle(file):
     with open(file, 'rb') as fo:
@@ -33,17 +34,16 @@ def cross_entropy_loss(y, yh):
     return -(y * np.log(yh)) - ((np.ones(y.shape)-y)*(np.log(np.ones(yh.shape)-yh)))
 
 def cross_entropy_loss_gradient(y, yh):
-        summand1 = y / yh
-        summand2 = (np.ones(y.shape)-y) / (np.ones(yh.shape)-yh)
-        return summand1 + summand2
+    summand1 = y / yh
+    summand2 = (np.ones(y.shape)-y) / (np.ones(yh.shape)-yh)
+    return summand1 + summand2
 
 def softmax(yh):
     yh_out = np.array(yh.shape)
-    print(yh.shape)
-    print(yh)
+    yh_out = np.exp(yh)
     for i in range(len(yh)):
-        denominator = np.sum(np.exp(yh[i]))
-        yh_out[i] = np.exp(yh[i]) / denominator
+        denominator = np.sum(yh_out[i])
+        yh_out[i] /= denominator
     return yh_out
 
 def softmax_gradient(yh):
@@ -151,12 +151,11 @@ class MLP:
         self.params = optimizer.run(self.gradient, x, y, params_init, self, test_x, test_y)
         return self
 
-    #NOT SURE WHAT TO DO HERE --------------------------------------------
     def gradient(self, x, y, params):
         yh = x
         steps = []
         for i in range(len(params)):
-            not_dropped = (np.random.randn(yh.shape) > self.dropout_p) * 1.0
+            not_dropped = (np.random.random_sample(yh.shape) > self.dropout_p) * 1.0
             yh = np.dot(yh*not_dropped, params[i])
             steps.append(yh)
             if i != (len(params)-1):
@@ -165,32 +164,37 @@ class MLP:
         yh = self.nonlinearity(yh)
         steps.append(yh)
         gradient = self.loss_gradient(y, steps.pop(-1)) #NxC
-        gradient = np.dot(gradient, self.nonlinearity_gradient(steps.pop(-1)))
+        gradient = np.dot(gradient, self.nonlinearity_gradient(steps.pop(-1)).T)
         #backpropagation
-        gradients = [gradient]
-        for w in params[::-1]:
+        gradients = []
+        for i in range(len(params)):
+            w = params[(len(params)-1)-i]
             #only add activation gradient if not on the last weights (last weights go straight to softmax)
-            if w != params[-1]: dw = self.activation_gradient(steps.pop(-1))
-            else: dw = w
-            gradient = np.dot(gradient, dw)
-            gradients = list([gradient]).extend(gradients)
+            if i != 0:
+                gradient = np.dot(gradient, self.activation_gradient(steps.pop(-1)))
+                dw = np.dot(gradient, steps.pop(-1))
+                gradient = np.dot(gradient, w)
+            else:
+                dw = np.dot(gradient, steps.pop(-1))
+                gradient = np.dot(gradient, w)
+            gradients = list([dw]).extend(gradients)
         return gradients
-    #PRETTY SURE THATS NOT RIGHT --------------------------------------------------------
     
     def predict(self, x):
         yh = x
-        for w in self.params:
+        for i in range(len(self.params)):
+            w = self.params[i]
             #dropout w/ weight scaling
             w *= (1.0-self.dropout_p)
             #don't do activation function on last weights
-            if w != self.params[-1]: yh = self.activation(np.dot(yh, w))
-            else: yh = np.dot(yh, w)
-        return self.nonlinearity(yh)
+            if i != len(self.params) - 1: yh = self.activation(np.dot(yh, w))
+            else: yh = self.nonlinearity(np.dot(yh, w))
+        return yh
   
 def load_from_file(file):
     try:
         with open(file, 'rb') as f:
-            data = pickle.load(f)
+            return pickle.load(f)
     except:
         return None
 
@@ -202,6 +206,7 @@ def getData():
     unpickled = load_from_file("data/data_arrays.sav")
     if unpickled != None:
         return unpickled
+    print("Pre-generated data not found. Generating...")
     data_batches = []
     directory = "data/cifar-10-batches-py/"
 
