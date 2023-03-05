@@ -157,7 +157,7 @@ class MLP:
 
     def gradient(self, x, y, params):
         yh = x
-        steps = []
+        steps = [x]
         for i in range(len(params)):
             not_dropped = (np.random.random_sample(yh.shape) > self.dropout_p) * 1.0
             yh = np.dot(yh*not_dropped, params[i])
@@ -168,20 +168,26 @@ class MLP:
         yh = self.nonlinearity(yh)
         steps.append(yh)
         gradient = self.loss_gradient(y, steps.pop(-1)) #NxC
-        gradient = np.dot(gradient, self.nonlinearity_gradient(steps.pop(-1)).T)
+        gradient = gradient * self.nonlinearity_gradient(steps.pop(-1)) #NxC
+        print(gradient.shape)
         #backpropagation
         gradients = []
         for i in range(len(params)):
             w = params[(len(params)-1)-i]
             #only add activation gradient if not on the last weights (last weights go straight to softmax)
             if i != 0:
-                gradient = np.dot(gradient, self.activation_gradient(steps.pop(-1)))
-                dw = np.dot(gradient, steps.pop(-1))
+                gradient = gradient * self.activation_gradient(steps.pop(-1))
+                print(gradient.shape)
+                dw = np.dot(steps.pop(-1).T, gradient) #same size as w
+                print("dw", dw.shape)
                 gradient = np.dot(gradient, w.T)
+                print(gradient.shape)
             else:
-                dw = np.dot(gradient, steps.pop(-1))
+                dw = np.dot(steps.pop(-1).T, gradient) #same size as w
+                print("dw", dw.shape)
                 gradient = np.dot(gradient, w.T)
-            gradients = list([dw]).extend(gradients)
+                print(gradient.shape)
+            gradients.insert(0, dw)
         return gradients
     
     def predict(self, x):

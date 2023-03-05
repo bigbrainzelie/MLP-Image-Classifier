@@ -13,7 +13,7 @@ def gradient_test(x):
     return model.gradient(x, test_y, model.params)
 
 def forward_test(x):
-    return cross_entropy_loss(test_y, model.predict(test_x))
+    return cross_entropy_loss(test_y, model.predict(test_x))[0]
 
 print(check_grad(forward_test, gradient_test, test_x))
 
