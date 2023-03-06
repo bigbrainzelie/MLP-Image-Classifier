@@ -3,7 +3,6 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.optimize import check_grad
 
 def unpickle(file):
     with open(file, 'rb') as fo:
@@ -31,7 +30,8 @@ def softplus(x): return np.log(np.ones(x.shape) + np.exp(x))
 def softplus_gradient(x): return logistic(x)
 
 def cross_entropy_loss(y, yh):
-    return -(y * np.log(yh)) - ((np.ones(y.shape)-y)*(np.log(np.ones(yh.shape)-yh)))
+    out = -(y * np.log(yh)) - ((np.ones(y.shape)-y)*(np.log(np.ones(yh.shape)-yh)))
+    return out
 
 def cross_entropy_loss_gradient(y, yh):
     summand1 = y / yh
@@ -120,6 +120,8 @@ class GradientDescent:
             i += 1
             norms = np.array([np.linalg.norm(g) for g in grad])
         self.iterationsPerformed = i
+        model.params = params
+        print("epoch", epoch, "completed. Train accuracy:", evaluate_acc(y, model.predict(x)), ". Test accuracy:", evaluate_acc(test_y, model.predict(test_x)))
         return params
 
 class MLP:
@@ -152,10 +154,10 @@ class MLP:
 
     def fit(self, x, y, optimizer, test_x, test_y):
         params_init = self.init_params(x, y)
-        self.params = optimizer.run(self.gradient, x, y, params_init, self, test_x, test_y)
+        self.params = optimizer.run(self.gradient, x, y, params_init, test_x, test_y, self)
         return self
 
-    def gradient(self, x, y, params):
+    def gradient(self, x, y, params, return_full_grad=False):
         yh = x
         steps = [x]
         for i in range(len(params)):
@@ -169,7 +171,6 @@ class MLP:
         steps.append(yh)
         gradient = self.loss_gradient(y, steps.pop(-1)) #NxC
         gradient = gradient * self.nonlinearity_gradient(steps.pop(-1)) #NxC
-        print(gradient.shape)
         #backpropagation
         gradients = []
         for i in range(len(params)):
@@ -177,17 +178,13 @@ class MLP:
             #only add activation gradient if not on the last weights (last weights go straight to softmax)
             if i != 0:
                 gradient = gradient * self.activation_gradient(steps.pop(-1))
-                print(gradient.shape)
                 dw = np.dot(steps.pop(-1).T, gradient) #same size as w
-                print("dw", dw.shape)
                 gradient = np.dot(gradient, w.T)
-                print(gradient.shape)
             else:
                 dw = np.dot(steps.pop(-1).T, gradient) #same size as w
-                print("dw", dw.shape)
                 gradient = np.dot(gradient, w.T)
-                print(gradient.shape)
             gradients.insert(0, dw)
+        if return_full_grad: return gradient
         return gradients
     
     def predict(self, x):
