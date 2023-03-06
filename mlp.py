@@ -32,17 +32,12 @@ def softplus_gradient(x): return logistic(x)
 def cross_entropy_loss(y, yh):
     out = -(y * np.log(yh)) - ((np.ones(y.shape)-y)*(np.log(np.ones(yh.shape)-yh)))
     return out
-
-def cross_entropy_loss_gradient(y, yh):
-    summand1 = y / yh
-    summand2 = (np.ones(y.shape)-y) / (np.ones(yh.shape)-yh)
-    return summand1 + summand2
-
+    
 def softmax(yh):
-    return np.exp(yh) / np.sum(np.exp(yh), axis=0)
+    return np.exp(yh-yh.max()) / np.sum(np.exp(yh))
 
-def softmax_gradient(yh):
-    return yh * (np.ones(yh.shape)-yh)
+def softmax_cross_entropy_gradient(yh, y):
+    return yh-y
 
 def evaluate_acc(y, yh):
     correct = 0
@@ -114,13 +109,14 @@ class GradientDescent:
             t += 1
             i += 1
             norms = np.array([np.linalg.norm(g) for g in grad])
+            print(norms)
         self.iterationsPerformed = i
         model.params = params
         print("epoch", epoch, "completed. Train accuracy:", evaluate_acc(y, model.predict(x)), ". Test accuracy:", evaluate_acc(test_y, model.predict(test_x)))
         return params
 
 class MLP:
-    def __init__(self, activation, activation_gradient, nonlinearity, nonlinearity_gradient, loss_gradient, hidden_layers=2, hidden_units=[64, 64], min_init_weight=0, dropout_p=0):
+    def __init__(self, activation, activation_gradient, nonlinearity, nonlinearity_gradient, hidden_layers=2, hidden_units=[64, 64], min_init_weight=0, dropout_p=0):
         if (hidden_layers != len(hidden_units)):
             print("Must have same number of hidden unit sizes as hidden layers!")
             exit()
@@ -131,7 +127,6 @@ class MLP:
         self.min_init_weight = min_init_weight
         self.nonlinearity = nonlinearity
         self.nonlinearity_gradient = nonlinearity_gradient
-        self.loss_gradient = loss_gradient
         self.dropout_p = dropout_p
             
     def init_params(self, x, y):
@@ -156,24 +151,28 @@ class MLP:
         yh = x
         steps = [x]
         for i in range(len(params)):
-            print(np.mean(yh, axis=1))
             not_dropped = (np.random.random_sample(yh.shape) > self.dropout_p) * 1.0
             yh = np.dot(yh*not_dropped, params[i])
             steps.append(yh)
             if i != (len(params)-1):
+                print("yh", yh)
                 yh = self.activation(yh)
                 steps.append(yh)
+
         yh = self.nonlinearity(yh)
         steps.append(yh)
-        gradient = self.loss_gradient(y, steps.pop(-1)) #NxC
-        gradient = gradient * self.nonlinearity_gradient(steps.pop(-1)) #NxC
+        gradient = self.nonlinearity_gradient(steps.pop(-1), y) #CxC
+        steps.pop(-1)
+        print("softmax + loss",np.linalg.norm(gradient))
+
         #backpropagation
         gradients = []
         for i in range(len(params)):
             w = params[(len(params)-1)-i]
             #only add activation gradient if not on the last weights (last weights go straight to softmax)
             if i != 0:
-                gradient = gradient * self.activation_gradient(steps.pop(-1))
+                act_grad = self.activation_gradient(steps.pop(-1))
+                gradient = gradient * act_grad
                 dw = np.dot(steps.pop(-1).T, gradient) #same size as w
                 gradient = np.dot(gradient, w.T)
             else:
@@ -181,7 +180,6 @@ class MLP:
                 gradient = np.dot(gradient, w.T)
             gradients.insert(0, dw)
         if return_full_grad: return gradient
-        print(gradients)
         return gradients
     
     def predict(self, x):
