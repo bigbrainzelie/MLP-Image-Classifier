@@ -6,11 +6,13 @@ train_x, train_y, test_x, test_y = getData()
 print("Loaded data successfully.")
 
 optimizer = GradientDescent(learning_rate=.001, max_iters=1e4, epsilon=1e-8, momentum=0, batch_size=None)
-model = MLP(activation=relu, activation_gradient=relu_gradient, nonlinearity=softmax, nonlinearity_gradient=softmax_gradient, loss_gradient=cross_entropy_loss_gradient, hidden_layers=2, hidden_units=[64, 64], min_init_weight=0, dropout_p=0)
+model = MLP(activation=relu, activation_gradient=relu_gradient, nonlinearity=softmax, nonlinearity_gradient=softmax_gradient, loss_gradient=cross_entropy_loss_gradient, hidden_layers=2, hidden_units=[64, 64], min_init_weight=0.0001, dropout_p=0)
 
 model.fit(train_x[:5000], train_y[:5000], optimizer, test_x, test_x)
 
+
 exit()
+
 
 model.params = model.init_params(test_x, test_y)
 

@@ -39,12 +39,7 @@ def cross_entropy_loss_gradient(y, yh):
     return summand1 + summand2
 
 def softmax(yh):
-    yh_out = np.array(yh.shape)
-    yh_out = np.exp(yh)
-    for i in range(len(yh)):
-        denominator = np.sum(yh_out[i])
-        yh_out[i] /= denominator
-    return yh_out
+    return np.exp(yh) / np.sum(np.exp(yh), axis=0)
 
 def softmax_gradient(yh):
     return yh * (np.ones(yh.shape)-yh)
@@ -161,6 +156,7 @@ class MLP:
         yh = x
         steps = [x]
         for i in range(len(params)):
+            print(np.mean(yh, axis=1))
             not_dropped = (np.random.random_sample(yh.shape) > self.dropout_p) * 1.0
             yh = np.dot(yh*not_dropped, params[i])
             steps.append(yh)
@@ -185,6 +181,7 @@ class MLP:
                 gradient = np.dot(gradient, w.T)
             gradients.insert(0, dw)
         if return_full_grad: return gradient
+        print(gradients)
         return gradients
     
     def predict(self, x):
