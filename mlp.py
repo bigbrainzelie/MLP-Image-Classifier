@@ -34,7 +34,7 @@ def cross_entropy_loss(y, yh):
     return out
     
 def softmax(yh):
-    return np.exp(yh-yh.max()) / np.sum(np.exp(yh))
+    return np.exp(yh)/np.sum(np.exp(yh), axis=1, keepdims=True)
 
 def softmax_cross_entropy_gradient(yh, y):
     return yh-y
@@ -50,7 +50,7 @@ def evaluate_acc(y, yh):
     return correct / (false + correct)
 
 class GradientDescent:
-    def __init__(self, learning_rate=.001, max_iters=1e4, epsilon=1e-8, momentum=0, batch_size=None):
+    def __init__(self, learning_rate=.01, max_iters=1e4, epsilon=1e-8, momentum=0, batch_size=None):
         self.learning_rate = learning_rate
         self.max_iters = max_iters
         self.epsilon = epsilon
@@ -148,6 +148,7 @@ class MLP:
         return self
 
     def gradient(self, x, y, params, return_full_grad=False):
+        N,_ = x.shape
         yh = x
         steps = [x]
         for i in range(len(params)):
@@ -155,17 +156,18 @@ class MLP:
             yh = np.dot(yh*not_dropped, params[i])
             steps.append(yh)
             if i != (len(params)-1):
-                print("yh", yh)
+                #print("yh", yh)
                 yh = self.activation(yh)
                 steps.append(yh)
 
         yh = self.nonlinearity(yh)
         steps.append(yh)
-        gradient = self.nonlinearity_gradient(steps.pop(-1), y) #CxC
-        steps.pop(-1)
-        print("softmax + loss",np.linalg.norm(gradient))
 
         #backpropagation
+        gradient = self.nonlinearity_gradient(steps.pop(-1), y) 
+        steps.pop(-1)
+        #print("softmax + loss",np.linalg.norm(gradient))
+
         gradients = []
         for i in range(len(params)):
             w = params[(len(params)-1)-i]
@@ -174,9 +176,11 @@ class MLP:
                 act_grad = self.activation_gradient(steps.pop(-1))
                 gradient = gradient * act_grad
                 dw = np.dot(steps.pop(-1).T, gradient) #same size as w
+                dw=dw/N
                 gradient = np.dot(gradient, w.T)
             else:
                 dw = np.dot(steps.pop(-1).T, gradient) #same size as w
+                dw=dw/N
                 gradient = np.dot(gradient, w.T)
             gradients.insert(0, dw)
         if return_full_grad: return gradient
@@ -240,6 +244,7 @@ def getData():
         new_test_y[i][test_y[i]] = 1
     test_y = new_test_y
 
+    
     #normalizing the images for each batch
     #division by the magnitude to improve convergence speed of gradient descent 
     train_x = np.float64(train_x)
@@ -250,4 +255,3 @@ def getData():
     save_to_file("data/data_arrays.sav", (train_x, train_y, test_x, test_y))
 
     return train_x, train_y, test_x, test_y
-
