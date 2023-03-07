@@ -1,8 +1,10 @@
 import pickle
-import numpy as np
+#import numpy as np
+import cupy as np
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
+from numba import jit, cuda
 
 def unpickle(file):
     with open(file, 'rb') as fo:
@@ -28,12 +30,13 @@ def leaky_relu_gradient(x):  return 1.0 * (x > 0) + 0.01 * (x <= 0)
 def softplus(x): return np.log(np.ones(x.shape) + np.exp(x))
 
 def softplus_gradient(x): return logistic(x)
-    
+
 def softmax(yh):
     denom = np.sum(np.exp(yh-np.max(yh)), axis=1, keepdims=True)
     return np.exp(yh-np.max(yh))/denom
 
 def evaluate_acc(y, yh):
+    return 0
     correct = 0
     false = 0
     for i in range(len(y)):
@@ -84,7 +87,7 @@ class GradientDescent:
                 single_batch_y = y.iloc[i * sizeOfMiniBatch:numberOfRowsData, :] #slice into a batch
                 batches.append((single_batch_x, single_batch_y))
         return batches
-            
+    
     def run(self, gradient_fn, x, y, params, test_x, test_y, model):
         batches = self.make_batches(x,y, self.batch_size)
         norms = np.array([np.inf])
@@ -115,7 +118,7 @@ class GradientDescent:
         return params
 
 class MLP:
-    def __init__(self, activation, activation_gradient, hidden_layers=2, hidden_units=[64, 64], min_init_weight=0, dropout_p=0):
+    def __init__(self, activation, activation_gradient, hidden_layers=2, hidden_units=[64, 64], dropout_p=0):
         if (hidden_layers != len(hidden_units)):
             print("Must have same number of hidden unit sizes as hidden layers!")
             exit()
@@ -123,7 +126,6 @@ class MLP:
         self.hidden_units = hidden_units
         self.activation = activation
         self.activation_gradient = activation_gradient
-        self.min_init_weight = min_init_weight
         self.dropout_p = dropout_p
             
     def init_params(self, x, y):
