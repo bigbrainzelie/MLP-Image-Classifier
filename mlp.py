@@ -255,3 +255,4 @@ def getData():
     save_to_file("data/data_arrays.sav", (train_x, train_y, test_x, test_y))
 
     return train_x, train_y, test_x, test_y
+#hello
